@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VSTREAK &mdash; Get Started</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .input-field {
+            background: rgba(255,255,255,0.9);
+            border: 1.5px solid rgba(99,102,241,0.2);
+            color: #1e1b4b;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #6d28d9;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(109,40,217,0.12);
+        }
+        .input-field::placeholder { color: rgba(99,102,241,0.35); }
+        .btn-violet {
+            background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+            transition: all 0.2s ease;
+        }
+        .btn-violet:hover {
+            background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(124,58,237,0.4);
+        }
+        .hero-overlay {
+            background: linear-gradient(135deg,
+                rgba(15,10,40,0.82) 0%,
+                rgba(60,20,120,0.65) 50%,
+                rgba(6,182,212,0.3) 100%);
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.5s ease-out forwards; }
+        .feature-pill {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 100px;
+            padding: 6px 14px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.8);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex">
+
+    <!-- Left: Hero image panel -->
+    <div class="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden">
+        <img src="/static/analytics-bg.png" alt="Analytics" class="absolute inset-0 w-full h-full object-cover">
+        <div class="hero-overlay absolute inset-0"></div>
+        <div class="relative z-10 flex flex-col justify-between p-12 w-full">
+            <!-- Brand -->
+            <div>
+                <img src="/static/vstreak-logo-nobg.png" alt="VSTREAK" class="h-12 w-auto" style="filter: brightness(0) invert(1) drop-shadow(0 0 12px rgba(0,220,255,0.6));">
+            </div>
+            <!-- Tagline -->
+            <div class="mb-8">
+                <h2 class="text-4xl xl:text-5xl font-black text-white leading-tight mb-4">
+                    Your productivity,<br>
+                    <span class="text-transparent bg-clip-text" style="background-image: linear-gradient(90deg, #06b6d4, #a78bfa);">gamified.</span>
+                </h2>
+                <p class="text-white/60 text-lg max-w-md leading-relaxed mb-8">
+                    Join VSTREAK and turn your daily tasks into a streak-building, XP-earning adventure — powered by AI.
+                </p>
+                <div class="flex flex-col gap-2.5">
+                    <div class="feature-pill"><span>🔥</span> 30-day streak heatmap</div>
+                    <div class="feature-pill"><span>⚡</span> XP &amp; leveling system</div>
+                    <div class="feature-pill">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#gstar_reg)"/>
+                            <defs><linearGradient id="gstar_reg" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="0.5" stop-color="#7c3aed"/><stop offset="1" stop-color="#34A853"/></linearGradient></defs>
+                        </svg>
+                        AI coaching with Gemini
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Form panel -->
+    <div class="w-full lg:w-1/2 xl:w-2/5 flex items-center justify-center bg-white px-6 py-12 relative">
+        <!-- Mobile logo -->
+        <div class="absolute top-6 left-6 lg:hidden">
+            <img src="/static/vstreak-logo-nobg.png" alt="VSTREAK" class="h-16 w-auto">
+        </div>
+
+        <div class="w-full max-w-sm fade-up">
+            <div class="mb-8">
+                <img src="/static/vstreak-logo-nobg.png" alt="VSTREAK" class="h-20 w-auto mb-6 hidden lg:block">
+                <h1 class="text-2xl font-black text-gray-900">Create your account</h1>
+                <p class="text-gray-400 mt-1 text-sm">Start building unbreakable habits today</p>
+            </div>
+
+            {% if error is defined and error %}
+            <div class="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form action="/register" method="post" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Username</label>
+                    <input autocomplete="off" autofocus
+                        class="input-field px-4 py-3 rounded-xl text-sm font-medium"
+                        name="username" placeholder="Choose a username" type="text" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Password</label>
+                    <input class="input-field px-4 py-3 rounded-xl text-sm font-medium"
+                        name="password" placeholder="Create a strong password" type="password" required>
+                </div>
+                <button class="btn-violet w-full py-3 rounded-xl text-sm font-bold text-white mt-2" type="submit">
+                    Create Account &rarr;
+                </button>
+            </form>
+
+            <p class="text-center mt-6 text-sm text-gray-400">
+                Already have an account?
+                <a href="/login" class="text-violet-600 hover:text-violet-700 font-semibold transition-colors">Sign in</a>
+            </p>
+
+            <p class="text-center mt-8 text-xs text-gray-300">
+                VSTREAK &mdash; Build your streak, own your day
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

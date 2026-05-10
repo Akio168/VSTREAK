@@ -1,0 +1,226 @@
+{% extends "layout.html" %}
+{% block title %} &mdash; AI Coach{% endblock %}
+
+{% block main %}
+<div class="max-w-3xl mx-auto animate-slide-up">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-lg shrink-0">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#gstar_hdr)"/>
+                    <defs><linearGradient id="gstar_hdr" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="0.5" stop-color="#7c3aed"/><stop offset="1" stop-color="#34A853"/></linearGradient></defs>
+                </svg>
+            </div>
+            <div>
+                <h1 class="font-black text-white text-xl tracking-tight">AI Productivity Coach</h1>
+                <p class="text-white/40 text-xs">Powered by Google Gemini &middot; Knows your tasks &amp; streak</p>
+            </div>
+        </div>
+        <button onclick="clearChat()" title="Clear chat history"
+            class="px-3 py-2 rounded-xl text-xs font-semibold border border-white/10 text-white/35 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/8 transition-all">
+            Clear history
+        </button>
+    </div>
+
+    <!-- Chat window -->
+    <div class="glass-card rounded-2xl overflow-hidden flex flex-col" style="height: calc(100vh - 260px); min-height: 420px;">
+
+        <!-- Messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth">
+
+            {% if not chat_history %}
+            <div id="empty-state" class="flex flex-col items-center justify-center h-full text-center py-12">
+                <div class="mb-4 w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-lg mx-auto">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#gstar_empty)"/>
+                        <defs><linearGradient id="gstar_empty" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="0.5" stop-color="#7c3aed"/><stop offset="1" stop-color="#34A853"/></linearGradient></defs>
+                    </svg>
+                </div>
+                <p class="text-white/50 font-semibold text-base">Your AI Coach is ready</p>
+                <p class="text-white/30 text-sm mt-1 max-w-xs">Ask me anything — I already know your tasks, streak, and XP. Try something like:</p>
+                <div class="mt-4 flex flex-col gap-2 w-full max-w-xs">
+                    <button onclick="fillPrompt('Give me a productivity summary for this week')"
+                        class="px-4 py-2.5 rounded-xl text-sm text-left border border-white/8 text-white/45 hover:text-white/70 hover:border-violet-500/30 hover:bg-violet-500/8 transition-all">
+                        📊 Give me a productivity summary for this week
+                    </button>
+                    <button onclick="fillPrompt('I have an interview next week. Help me plan my prep around my existing tasks.')"
+                        class="px-4 py-2.5 rounded-xl text-sm text-left border border-white/8 text-white/45 hover:text-white/70 hover:border-violet-500/30 hover:bg-violet-500/8 transition-all">
+                        🎯 Help me plan interview prep around my tasks
+                    </button>
+                    <button onclick="fillPrompt('What habits should I build to improve my streak?')"
+                        class="px-4 py-2.5 rounded-xl text-sm text-left border border-white/8 text-white/45 hover:text-white/70 hover:border-violet-500/30 hover:bg-violet-500/8 transition-all">
+                        🔥 What habits should I build to improve my streak?
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            {% for msg in chat_history %}
+            <div class="flex {% if msg.sender == 'user' %}justify-end{% else %}justify-start{% endif %} message-row">
+                {% if msg.sender == 'ai' %}
+                <div class="flex items-start gap-2.5 max-w-[82%]">
+                    <div class="w-7 h-7 rounded-xl bg-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#gstar_bubble)"/>
+                            <defs><linearGradient id="gstar_bubble" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="0.5" stop-color="#7c3aed"/><stop offset="1" stop-color="#34A853"/></linearGradient></defs>
+                        </svg>
+                    </div>
+                    <div class="px-4 py-3 rounded-2xl rounded-tl-sm bg-white/6 border border-white/8 text-white/90 text-sm leading-relaxed whitespace-pre-wrap">{{ msg.message }}</div>
+                </div>
+                {% else %}
+                <div class="px-4 py-3 rounded-2xl rounded-tr-sm bg-gradient-to-br from-violet-600 to-violet-700 text-white text-sm leading-relaxed max-w-[82%]">{{ msg.message }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <!-- Typing indicator (hidden) -->
+            <div id="typing-indicator" class="hidden flex items-start gap-2.5">
+                <div class="w-7 h-7 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#gstar_typing)"/>
+                        <defs><linearGradient id="gstar_typing" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="0.5" stop-color="#7c3aed"/><stop offset="1" stop-color="#34A853"/></linearGradient></defs>
+                    </svg>
+                </div>
+                <div class="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-white/6 border border-white/8 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-violet-400 typing-dot" style="animation: typingBounce 1.2s ease-in-out infinite 0s"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-violet-400 typing-dot" style="animation: typingBounce 1.2s ease-in-out infinite 0.2s"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-violet-400 typing-dot" style="animation: typingBounce 1.2s ease-in-out infinite 0.4s"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input bar -->
+        <div class="border-t border-white/8 p-4">
+            <form id="chat-form" class="flex gap-3 items-end">
+                <textarea
+                    id="chat-input"
+                    rows="1"
+                    placeholder="Ask your coach anything..."
+                    class="input-field flex-1 px-4 py-3 rounded-xl text-sm font-medium placeholder-white/25 resize-none overflow-hidden"
+                    style="max-height: 120px;"
+                    autocomplete="off"
+                ></textarea>
+                <button type="submit" id="send-btn"
+                    class="btn-violet w-11 h-11 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    title="Send message">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </form>
+            <p class="text-white/20 text-xs mt-2 text-center">Context-aware &middot; Your task &amp; streak data is included automatically</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes typingBounce {
+        0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+        30% { transform: translateY(-5px); opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const messagesEl = document.getElementById('chat-messages');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const typingIndicator = document.getElementById('typing-indicator');
+
+    function scrollToBottom() {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    scrollToBottom();
+
+    input.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.dispatchEvent(new Event('submit'));
+        }
+    });
+
+    function addMessage(sender, text) {
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState) emptyState.remove();
+
+        const row = document.createElement('div');
+        row.className = 'flex ' + (sender === 'user' ? 'justify-end' : 'justify-start') + ' message-row animate-fade-in';
+
+        const geminiIcon = `<div class="w-7 h-7 rounded-xl bg-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm"><svg width="16" height="16" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2C14 2 9 8.5 9 14C9 16.76 11.24 19 14 19C16.76 19 19 16.76 19 14C19 8.5 14 2Z" fill="url(#gd1)"/><path d="M14 26C14 26 19 19.5 19 14C19 11.24 16.76 9 14 9C11.24 9 9 11.24 9 14C9 19.5 14 26Z" fill="url(#gd2)"/><path d="M2 14C2 14 8.5 9 14 9C16.76 9 19 11.24 19 14C19 16.76 16.76 19 14 19C8.5 19 2 14Z" fill="url(#gd3)"/><path d="M26 14C26 14 19.5 19 14 19C11.24 19 9 16.76 9 14C9 11.24 11.24 9 14 9C19.5 9 26 14Z" fill="url(#gd4)"/><defs><linearGradient id="gd1" x1="14" y1="2" x2="14" y2="19" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="1" stop-color="#1967D2"/></linearGradient><linearGradient id="gd2" x1="14" y1="9" x2="14" y2="26" gradientUnits="userSpaceOnUse"><stop stop-color="#34A853"/><stop offset="1" stop-color="#0D9348"/></linearGradient><linearGradient id="gd3" x1="2" y1="14" x2="19" y2="14" gradientUnits="userSpaceOnUse"><stop stop-color="#EA4335"/><stop offset="1" stop-color="#C5221F"/></linearGradient><linearGradient id="gd4" x1="9" y1="14" x2="26" y2="14" gradientUnits="userSpaceOnUse"><stop stop-color="#FBBC04"/><stop offset="1" stop-color="#F29900"/></linearGradient></defs></svg></div>`;
+        if (sender === 'ai') {
+            row.innerHTML = `
+                <div class="flex items-start gap-2.5 max-w-[82%]">
+                    ${geminiIcon}
+                    <div class="px-4 py-3 rounded-2xl rounded-tl-sm bg-white/6 border border-white/8 text-white/90 text-sm leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</div>
+                </div>`;
+        } else {
+            row.innerHTML = `<div class="px-4 py-3 rounded-2xl rounded-tr-sm bg-gradient-to-br from-violet-600 to-violet-700 text-white text-sm leading-relaxed max-w-[82%]">${escapeHtml(text)}</div>`;
+        }
+
+        messagesEl.insertBefore(row, typingIndicator);
+        scrollToBottom();
+    }
+
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(text));
+        return d.innerHTML;
+    }
+
+    function setLoading(loading) {
+        sendBtn.disabled = loading;
+        input.disabled = loading;
+        typingIndicator.classList.toggle('hidden', !loading);
+        typingIndicator.classList.toggle('flex', loading);
+        if (loading) scrollToBottom();
+    }
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        addMessage('user', text);
+        input.value = '';
+        input.style.height = 'auto';
+        setLoading(true);
+
+        try {
+            const res = await fetch('/chat/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await res.json();
+            setLoading(false);
+            addMessage('ai', data.reply || data.error || 'Something went wrong.');
+        } catch (err) {
+            setLoading(false);
+            addMessage('ai', 'Network error — please try again.');
+        }
+    });
+
+    function fillPrompt(text) {
+        input.focus();
+        input.value = text;
+        input.dispatchEvent(new Event('input'));
+    }
+
+    async function clearChat() {
+        if (!confirm('Clear your entire chat history with the AI Coach?')) return;
+        await fetch('/chat/clear', { method: 'POST' });
+        window.location.reload();
+    }
+</script>
+{% endblock %}

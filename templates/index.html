@@ -1,0 +1,521 @@
+{% extends "layout.html" %}
+{% block title %} &mdash; Dashboard{% endblock %}
+
+{% block main %}
+{% with messages = get_flashed_messages() %}
+    {% for message in messages %}
+        {% if message == 'streak_won' %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var count = 280;
+                var defaults = { origin: { y: 0.85 }, colors: ['#7c3aed','#06b6d4','#a78bfa','#fbbf24','#34d399'] };
+                function fire(ratio, opts) {
+                    confetti(Object.assign({}, defaults, opts, { particleCount: Math.floor(count * ratio) }));
+                }
+                fire(0.25, { spread: 26, startVelocity: 55 });
+                fire(0.2,  { spread: 60 });
+                fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+                fire(0.1,  { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+                fire(0.1,  { spread: 120, startVelocity: 45 });
+            });
+        </script>
+        <div id="win-banner" class="mb-6 px-5 py-4 rounded-2xl glass-card border border-emerald-500/30 bg-emerald-500/10 flex items-center gap-3 animate-slide-up">
+            <span class="text-2xl">🎉</span>
+            <div>
+                <p class="font-bold text-emerald-300">Day Won! +50 Bonus XP</p>
+                <p class="text-emerald-400/70 text-sm">You crushed every task today. Keep that streak alive!</p>
+            </div>
+            <button onclick="document.getElementById('win-banner').remove()" class="ml-auto text-white/30 hover:text-white/60 transition-colors text-lg">×</button>
+        </div>
+        {% endif %}
+        {% if message == 'first_task' %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() { launchFireStreak(); });
+        </script>
+        {% endif %}
+        {% if message == 'gemini_key_saved' %}
+        <div id="key-banner" class="mb-6 px-5 py-4 rounded-2xl glass-card border border-violet-500/30 bg-violet-500/10 flex items-center gap-3 animate-slide-up">
+            <span class="text-2xl">🔑</span>
+            <p class="font-medium text-violet-300 text-sm">Gemini API key saved! You can now use the AI Coach.</p>
+            <button onclick="document.getElementById('key-banner').remove()" class="ml-auto text-white/30 hover:text-white/60 transition-colors text-lg">×</button>
+        </div>
+        {% endif %}
+        {% if message == 'no_gemini_key' %}
+        <div class="mb-6 px-5 py-4 rounded-2xl glass-card border border-amber-500/30 bg-amber-500/10 flex items-center gap-3 animate-slide-up">
+            <span class="text-2xl">⚠️</span>
+            <p class="font-medium text-amber-300 text-sm">Please save a Gemini API key first to use the AI Coach.</p>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endwith %}
+
+<!-- Stats Row -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 animate-slide-up">
+    <div class="glass-card rounded-2xl p-5 col-span-2 md:col-span-1">
+        <p class="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Total Days Won</p>
+        <p class="text-5xl font-black bg-gradient-to-br from-violet-400 to-cyan-400 bg-clip-text text-transparent leading-none">{{ wins }}</p>
+        <p class="text-white/40 text-xs mt-2">🔥 Perfect days</p>
+    </div>
+    <div class="glass-card rounded-2xl p-5">
+        <p class="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Level</p>
+        <p class="text-4xl font-black text-white leading-none">{{ level_info.level }}</p>
+        <p class="text-violet-400 text-xs font-bold mt-2">{{ level_info.title }}</p>
+    </div>
+    <div class="glass-card rounded-2xl p-5">
+        <p class="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Total XP</p>
+        <p class="text-4xl font-black text-amber-400 leading-none">{{ level_info.xp }}</p>
+        <div class="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full xp-bar-fill" style="width: {{ level_info.progress }}%"></div>
+        </div>
+        <p class="text-white/30 text-xs mt-1">{{ level_info.next_threshold }} XP to next level</p>
+    </div>
+    <div class="glass-card rounded-2xl p-5">
+        <p class="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Today's Tasks</p>
+        <p class="text-4xl font-black text-emerald-400 leading-none">{{ tasks | selectattr('is_completed', 'equalto', 1) | list | length }}<span class="text-white/20 text-2xl font-bold">/{{ tasks | length }}</span></p>
+        <p class="text-white/40 text-xs mt-2">✅ Completed today</p>
+    </div>
+</div>
+
+<!-- Main grid: Tasks + Chart -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+
+    <!-- Task Panel (2/3 width) -->
+    <div class="lg:col-span-2 space-y-4">
+        <!-- Add Task Form -->
+        <div class="glass-card rounded-2xl p-5 animate-slide-up">
+            <h2 class="text-sm font-bold text-white/40 uppercase tracking-widest mb-4">Add Today's Task</h2>
+            <form action="/add" method="post" class="flex flex-col sm:flex-row gap-3">
+                <input
+                    autocomplete="off"
+                    autofocus
+                    class="input-field flex-1 px-4 py-3 rounded-xl text-sm font-medium placeholder-white/25"
+                    name="task_name"
+                    placeholder="What will you crush today?"
+                    type="text"
+                    required
+                >
+                <select name="category" class="input-field px-4 py-3 rounded-xl text-sm font-medium sm:w-36 cursor-pointer">
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn-violet px-5 py-3 rounded-xl text-sm font-bold text-white shrink-0" type="submit">
+                    + Add Task
+                </button>
+            </form>
+        </div>
+
+        <!-- Task List -->
+        <div class="glass-card rounded-2xl overflow-hidden animate-slide-up" id="task-list">
+            {% if not tasks %}
+            <div class="p-12 text-center">
+                <div class="text-5xl mb-4">🎯</div>
+                <p class="text-white/50 font-medium">No tasks yet for today.</p>
+                <p class="text-white/30 text-sm mt-1">Add your first task above to get started!</p>
+            </div>
+            {% else %}
+            <div class="divide-y divide-white/5">
+                {% for task in tasks %}
+                <div class="task-row flex items-center gap-4 px-5 py-4 group" id="task-{{ task['id'] }}">
+                    {% if task["is_completed"] == 1 %}
+                    <div class="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <span class="text-sm font-medium text-white/30 line-through">{{ task["task_name"] }}</span>
+                    </div>
+                    {% set cat = task["category"] if task["category"] else "General" %}
+                    <span class="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold
+                        {% if cat == 'Study' %}bg-blue-500/15 text-blue-300 border border-blue-500/25
+                        {% elif cat == 'Coding' %}bg-violet-500/15 text-violet-300 border border-violet-500/25
+                        {% elif cat == 'Fitness' %}bg-green-500/15 text-green-300 border border-green-500/25
+                        {% elif cat == 'Work' %}bg-orange-500/15 text-orange-300 border border-orange-500/25
+                        {% elif cat == 'Personal' %}bg-pink-500/15 text-pink-300 border border-pink-500/25
+                        {% else %}bg-slate-500/15 text-slate-300 border border-slate-500/25{% endif %}">
+                        {{ cat }}
+                    </span>
+                    <span class="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Done ✓</span>
+                    {% else %}
+                    <div class="w-6 h-6 rounded-full border-2 border-white/15 shrink-0 group-hover:border-violet-500/50 transition-colors"></div>
+                    <div class="flex-1 min-w-0">
+                        <span class="text-sm font-medium text-white">{{ task["task_name"] }}</span>
+                    </div>
+                    {% set cat = task["category"] if task["category"] else "General" %}
+                    <span class="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold
+                        {% if cat == 'Study' %}bg-blue-500/15 text-blue-300 border border-blue-500/25
+                        {% elif cat == 'Coding' %}bg-violet-500/15 text-violet-300 border border-violet-500/25
+                        {% elif cat == 'Fitness' %}bg-green-500/15 text-green-300 border border-green-500/25
+                        {% elif cat == 'Work' %}bg-orange-500/15 text-orange-300 border border-orange-500/25
+                        {% elif cat == 'Personal' %}bg-pink-500/15 text-pink-300 border border-pink-500/25
+                        {% else %}bg-slate-500/15 text-slate-300 border border-slate-500/25{% endif %}">
+                        {{ cat }}
+                    </span>
+                    <form action="/complete" method="post" class="shrink-0">
+                        <input type="hidden" name="task_id" value="{{ task['id'] }}">
+                        <button type="submit"
+                            class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/15 hover:border-emerald-500/50 transition-all"
+                            onclick="animateComplete({{ task['id'] }}, event)">
+                            Finish ✓
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right sidebar: Chart + Heatmap -->
+    <div class="space-y-4">
+        <!-- Chart.js -->
+        <div class="glass-card rounded-2xl p-5 animate-slide-up">
+            <h2 class="text-sm font-bold text-white/40 uppercase tracking-widest mb-4">This Week</h2>
+            <canvas id="weekChart" height="160"></canvas>
+        </div>
+
+        <!-- 30-Day Heatmap -->
+        <div class="glass-card rounded-2xl p-5 animate-slide-up">
+            <h2 class="text-sm font-bold text-white/40 uppercase tracking-widest mb-4">Last 30 Days <span class="text-white/20 font-normal normal-case tracking-normal text-xs ml-1">— tap a day to see tasks</span></h2>
+            <div class="flex flex-wrap gap-1.5 justify-start">
+                {% for day in last_30_days %}
+                <button onclick="openDayModal('{{ day }}')"
+                    class="w-6 h-6 rounded-md relative group transition-all hover:scale-125 hover:z-10 focus:outline-none
+                    {% if day in won_dates %}
+                        bg-gradient-to-br from-violet-500 to-cyan-500 shadow-md shadow-violet-500/30
+                    {% else %}
+                        bg-white/8 border border-white/8 hover:border-white/20
+                    {% endif %}"
+                    title="{{ day }}{% if day in won_dates %} — Day Won!{% endif %}">
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Coach CTA -->
+<a href="/chat" class="block glass-card rounded-2xl p-6 animate-slide-up ai-glow hover:border-violet-500/30 transition-all group">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center group-hover:scale-110 transition-transform shadow">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#gstar_dash)"/>
+                    <defs><linearGradient id="gstar_dash" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="0.5" stop-color="#7c3aed"/><stop offset="1" stop-color="#34A853"/></linearGradient></defs>
+                </svg>
+            </div>
+            <div>
+                <h2 class="font-bold text-white">AI Productivity Coach</h2>
+                <p class="text-white/40 text-xs">Powered by Google Gemini &middot; Knows your tasks &amp; streak</p>
+            </div>
+        </div>
+        <div class="btn-violet px-4 py-2 rounded-xl text-sm font-bold text-white flex items-center gap-2">
+            Chat now
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </div>
+    </div>
+    <p class="text-white/30 text-sm mt-4">Ask for a weekly summary, plan your interview prep, get habit advice — your coach already knows your workload.</p>
+</a>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Chart.js weekly productivity
+    const weekLabels = {{ week_labels | tojson }};
+    const weekCounts = {{ week_counts | tojson }};
+    const isDark = () => !document.getElementById('app-body').classList.contains('light-mode');
+
+    const ctx = document.getElementById('weekChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, 'rgba(124,58,237,0.35)');
+    gradient.addColorStop(1, 'rgba(124,58,237,0.0)');
+
+    const weekChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: weekLabels,
+            datasets: [{
+                label: 'Tasks Done',
+                data: weekCounts,
+                borderColor: '#7c3aed',
+                backgroundColor: gradient,
+                borderWidth: 2.5,
+                pointBackgroundColor: '#a78bfa',
+                pointBorderColor: '#7c3aed',
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(10,10,20,0.9)',
+                    borderColor: 'rgba(124,58,237,0.4)',
+                    borderWidth: 1,
+                    titleColor: '#a78bfa',
+                    bodyColor: '#e2e8f0',
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => ` ${ctx.parsed.y} task${ctx.parsed.y !== 1 ? 's' : ''} completed`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 11 } },
+                    border: { color: 'transparent' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        stepSize: 1,
+                        font: { size: 11 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    border: { color: 'transparent' }
+                }
+            }
+        }
+    });
+
+    // Task completion animation
+    function animateComplete(taskId, event) {
+        event.preventDefault();
+        const el = document.getElementById('task-' + taskId);
+        if (el) {
+            el.style.transition = 'all 0.35s cubic-bezier(0.4,0,0.2,1)';
+            el.style.opacity = '0';
+            el.style.transform = 'translateX(30px) scale(0.96)';
+            setTimeout(() => { event.target.closest('form').submit(); }, 320);
+        } else {
+            event.target.closest('form').submit();
+        }
+    }
+
+    // TikTok-style fire streak animation
+    function launchFireStreak() {
+        const overlay = document.createElement('div');
+        overlay.id = 'fire-streak-overlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; z-index: 9999;
+            pointer-events: none; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        `;
+
+        overlay.innerHTML = `
+            <style>
+                .fs-flame {
+                    position: absolute; bottom: -10px;
+                    border-radius: 50% 50% 30% 30%;
+                    transform-origin: bottom center;
+                    animation: fsFlameRise 0.7s ease-in-out infinite alternate;
+                    filter: blur(1px);
+                }
+                @keyframes fsFlameRise {
+                    0%  { transform: scaleX(1)   rotate(-3deg) scaleY(1);   opacity: 0.95; }
+                    100%{ transform: scaleX(0.82) rotate(3deg)  scaleY(1.08); opacity: 0.8; }
+                }
+                .fs-inner-flame {
+                    position: absolute; bottom: -5px;
+                    border-radius: 50% 50% 30% 30%;
+                    transform-origin: bottom center;
+                    animation: fsInnerFlame 0.5s ease-in-out infinite alternate;
+                }
+                @keyframes fsInnerFlame {
+                    0%  { transform: scaleX(1)    rotate(2deg)  scaleY(1);    opacity: 1; }
+                    100%{ transform: scaleX(0.88) rotate(-2deg) scaleY(1.1);  opacity: 0.85; }
+                }
+                .fs-spark {
+                    position: absolute;
+                    border-radius: 50%;
+                    animation: fsSpark linear forwards;
+                }
+                @keyframes fsSpark {
+                    0%   { transform: translateY(0)    scale(1);   opacity: 1; }
+                    100% { transform: translateY(-320px) scale(0.2); opacity: 0; }
+                }
+                .fs-badge {
+                    animation: fsBadgePop 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards,
+                               fsBadgeFade 0.5s ease forwards 2.2s;
+                    transform: scale(0);
+                }
+                @keyframes fsBadgePop  { to { transform: scale(1); } }
+                @keyframes fsBadgeFade { to { opacity: 0; transform: scale(0.9); } }
+                .fs-overlay-fade { animation: fsOverlayFade 0.4s ease forwards 2.7s; }
+                @keyframes fsOverlayFade { to { opacity: 0; } }
+            </style>
+
+            <!-- Flame columns -->
+            <div class="fs-overlay-fade" style="position:absolute;inset:0;pointer-events:none;">
+                <!-- Left column -->
+                <div class="fs-flame" style="left:15%;width:70px;height:200px;background:linear-gradient(to top,#ff2200,#ff6600,#ff9900,#ffcc00,transparent);animation-delay:0.1s;animation-duration:0.65s;"></div>
+                <div class="fs-inner-flame" style="left:18%;width:38px;height:130px;background:linear-gradient(to top,#ff4400,#ffaa00,#ffee55,transparent);animation-delay:0.05s;"></div>
+
+                <!-- Center-left column -->
+                <div class="fs-flame" style="left:32%;width:90px;height:270px;background:linear-gradient(to top,#ff1a00,#ff5500,#ff9900,#ffdd00,transparent);animation-duration:0.72s;"></div>
+                <div class="fs-inner-flame" style="left:36%;width:48px;height:175px;background:linear-gradient(to top,#ff3300,#ffaa00,#ffff55,transparent);animation-delay:0.08s;"></div>
+
+                <!-- Center column (tallest) -->
+                <div class="fs-flame" style="left:46%;width:110px;height:340px;background:linear-gradient(to top,#ff0000,#ff4400,#ff8800,#ffcc00,#ffff00,transparent);animation-duration:0.8s;animation-delay:0.05s;"></div>
+                <div class="fs-inner-flame" style="left:51%;width:60px;height:220px;background:linear-gradient(to top,#ff2200,#ffbb00,#ffff66,transparent);animation-delay:0.1s;"></div>
+
+                <!-- Center-right column -->
+                <div class="fs-flame" style="left:62%;width:90px;height:270px;background:linear-gradient(to top,#ff1a00,#ff5500,#ff9900,#ffdd00,transparent);animation-duration:0.68s;animation-delay:0.12s;"></div>
+                <div class="fs-inner-flame" style="left:66%;width:48px;height:175px;background:linear-gradient(to top,#ff3300,#ffaa00,#ffff55,transparent);animation-delay:0.06s;"></div>
+
+                <!-- Right column -->
+                <div class="fs-flame" style="left:79%;width:70px;height:200px;background:linear-gradient(to top,#ff2200,#ff6600,#ff9900,#ffcc00,transparent);animation-duration:0.62s;animation-delay:0.08s;"></div>
+                <div class="fs-inner-flame" style="left:82%;width:38px;height:130px;background:linear-gradient(to top,#ff4400,#ffaa00,#ffee55,transparent);animation-delay:0.03s;"></div>
+
+                <!-- Ground glow -->
+                <div style="position:absolute;bottom:0;left:0;right:0;height:80px;background:radial-gradient(ellipse 70% 100% at 50% 100%,rgba(255,100,0,0.45),transparent);pointer-events:none;"></div>
+            </div>
+
+            <!-- Central badge -->
+            <div class="fs-badge" style="
+                background: linear-gradient(135deg,#ff4500,#ff8800);
+                border: 2px solid rgba(255,200,0,0.6);
+                border-radius: 20px; padding: 16px 32px;
+                box-shadow: 0 0 40px rgba(255,100,0,0.7), 0 0 80px rgba(255,50,0,0.4);
+                text-align: center; backdrop-filter: blur(4px);
+            ">
+                <div style="font-size:2.8rem;line-height:1;">🔥</div>
+                <div style="font-size:1.4rem;font-weight:900;color:#fff;letter-spacing:0.12em;text-shadow:0 0 12px #ff8800,0 0 24px #ff4400;margin-top:4px;">STREAK!</div>
+                <div style="font-size:0.75rem;color:rgba(255,220,150,0.9);font-weight:600;margin-top:2px;letter-spacing:0.05em;">First task done today · +10 XP</div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Confetti sparks — fire colors
+        const fireColors = ['#ff4500','#ff6600','#ff8800','#ffaa00','#ffcc00','#ff2200'];
+        confetti({ particleCount: 60, angle: 90, spread: 55, origin: { x: 0.5, y: 1 }, colors: fireColors, startVelocity: 45, gravity: 0.6, scalar: 0.9, ticks: 120 });
+        confetti({ particleCount: 40, angle: 75,  spread: 40, origin: { x: 0.3, y: 1 }, colors: fireColors, startVelocity: 40, gravity: 0.55, scalar: 0.8, ticks: 110 });
+        confetti({ particleCount: 40, angle: 105, spread: 40, origin: { x: 0.7, y: 1 }, colors: fireColors, startVelocity: 40, gravity: 0.55, scalar: 0.8, ticks: 110 });
+
+        setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 3100);
+    }
+</script>
+
+<!-- Day Tasks Modal -->
+<div id="day-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeDayModal()">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-md rounded-2xl border border-white/10 shadow-2xl overflow-hidden" style="background: linear-gradient(135deg, #1a1035 0%, #0f0c26 100%);">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/8">
+            <div>
+                <p id="modal-day-label" class="text-xs font-semibold text-violet-400 uppercase tracking-widest mb-0.5"></p>
+                <h2 id="modal-date" class="text-lg font-black text-white"></h2>
+            </div>
+            <button onclick="closeDayModal()" class="w-8 h-8 rounded-lg bg-white/8 hover:bg-white/15 flex items-center justify-center text-white/50 hover:text-white transition-all text-lg leading-none">&times;</button>
+        </div>
+        <!-- Body -->
+        <div id="modal-body" class="px-6 py-5 space-y-4 max-h-80 overflow-y-auto">
+            <div id="modal-loading" class="flex justify-center py-8">
+                <div class="w-6 h-6 rounded-full border-2 border-violet-500 border-t-transparent animate-spin"></div>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div id="modal-footer" class="hidden px-6 pb-5">
+            <div class="flex gap-4 text-xs text-white/30">
+                <span id="modal-completed-count" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> <span></span></span>
+                <span id="modal-incomplete-count" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-white/20 inline-block"></span> <span></span></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openDayModal(date) {
+    const modal = document.getElementById('day-modal');
+    const body = document.getElementById('modal-body');
+    const footer = document.getElementById('modal-footer');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    // Format date for display
+    const d = new Date(date + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diff = Math.round((today - d) / 86400000);
+    const label = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : `${diff} days ago`;
+    document.getElementById('modal-day-label').textContent = label;
+    document.getElementById('modal-date').textContent = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    // Reset state
+    body.innerHTML = '<div id="modal-loading" class="flex justify-center py-8"><div class="w-6 h-6 rounded-full border-2 border-violet-500 border-t-transparent animate-spin"></div></div>';
+    footer.classList.add('hidden');
+
+    fetch('/tasks-for-day/' + date)
+        .then(r => r.json())
+        .then(data => {
+            const completed = data.completed || [];
+            const incomplete = data.incomplete || [];
+
+            if (completed.length === 0 && incomplete.length === 0) {
+                body.innerHTML = '<div class="text-center py-8 text-white/30 text-sm">No tasks were logged on this day.</div>';
+                return;
+            }
+
+            let html = '';
+            if (completed.length > 0) {
+                html += '<div>';
+                html += '<p class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2">Completed</p>';
+                html += '<div class="space-y-1.5">';
+                completed.forEach(t => {
+                    html += `<div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/15">
+                        <span class="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                            <svg width="8" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </span>
+                        <span class="text-sm text-white/85 font-medium">${escHtml(t.name)}</span>
+                        ${t.category ? `<span class="ml-auto text-xs text-white/25 shrink-0">${escHtml(t.category)}</span>` : ''}
+                    </div>`;
+                });
+                html += '</div></div>';
+            }
+            if (incomplete.length > 0) {
+                html += '<div>';
+                html += '<p class="text-xs font-bold text-white/30 uppercase tracking-widest mb-2">Missed</p>';
+                html += '<div class="space-y-1.5">';
+                incomplete.forEach(t => {
+                    html += `<div class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/4 border border-white/8">
+                        <span class="w-4 h-4 rounded-full border border-white/20 shrink-0"></span>
+                        <span class="text-sm text-white/40 font-medium line-through">${escHtml(t.name)}</span>
+                        ${t.category ? `<span class="ml-auto text-xs text-white/20 shrink-0">${escHtml(t.category)}</span>` : ''}
+                    </div>`;
+                });
+                html += '</div></div>';
+            }
+
+            body.innerHTML = html;
+            footer.classList.remove('hidden');
+            document.getElementById('modal-completed-count').querySelector('span:last-child').textContent = `${completed.length} completed`;
+            document.getElementById('modal-incomplete-count').querySelector('span:last-child').textContent = `${incomplete.length} missed`;
+        })
+        .catch(() => {
+            body.innerHTML = '<div class="text-center py-8 text-red-400/60 text-sm">Failed to load tasks.</div>';
+        });
+}
+
+function closeDayModal() {
+    const modal = document.getElementById('day-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDayModal(); });
+</script>
+{% endblock %}
